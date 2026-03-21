@@ -1,5 +1,5 @@
 <!-- ═══════════════════════════════════════════════
-     PocketDex README — https://github.com/Mikeore/Pocketdex
+     PocketDex README — https://github.com/Mikeore/PocketDex
      ═══════════════════════════════════════════════ -->
 <div align="center">
 
@@ -16,8 +16,8 @@ monitor progress, approve commands, and steer conversations from anywhere.
 [![Node.js ≥ 18](https://img.shields.io/badge/node-%E2%89%A518-brightgreen?logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![PWA Ready](https://img.shields.io/badge/PWA-ready-0f766e?logo=googlechrome&logoColor=white)](https://web.dev/progressive-web-apps/)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Mikeore/Pocketdex)
-[![GitHub stars](https://img.shields.io/github/stars/Mikeore/Pocketdex?style=social)](https://github.com/Mikeore/Pocketdex/stargazers)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Mikeore/PocketDex)
+[![GitHub stars](https://img.shields.io/github/stars/Mikeore/PocketDex?style=social)](https://github.com/Mikeore/PocketDex/stargazers)
 
 <br/>
 
@@ -66,12 +66,12 @@ monitor progress, approve commands, and steer conversations from anywhere.
 
 **Windows**
 ```bat
-git clone https://github.com/Mikeore/Pocketdex.git && cd Pocketdex && start.bat
+git clone https://github.com/Mikeore/PocketDex.git && cd PocketDex && start.bat
 ```
 
 **macOS / Linux**
 ```bash
-git clone https://github.com/Mikeore/Pocketdex.git && cd Pocketdex && chmod +x start.sh && ./start.sh
+git clone https://github.com/Mikeore/PocketDex.git && cd PocketDex && chmod +x start.sh && ./start.sh
 ```
 
 ```
@@ -262,8 +262,8 @@ npm run repo:zip
 ### Developer path: Git clone
 
 ```bash
-git clone https://github.com/Mikeore/Pocketdex.git
-cd Pocketdex
+git clone https://github.com/Mikeore/PocketDex.git
+cd PocketDex
 ```
 
 Then run `start.bat` on Windows or `./start.sh` on macOS / Linux.
@@ -386,7 +386,7 @@ You'd need HTTPS + a reverse proxy. Not recommended without extra hardening.
 1. Fork the repo
 2. Create a feature branch: `git checkout -b feature/amazing-thing`
 3. Commit and push
-4. Open a Pull Request at [github.com/Mikeore/Pocketdex](https://github.com/Mikeore/Pocketdex)
+4. Open a Pull Request at [github.com/Mikeore/PocketDex](https://github.com/Mikeore/PocketDex)
 
 ---
 
@@ -547,8 +547,8 @@ PCで PocketDex を起動してQRコードをスキャンするだけで、
 **開発者向けに Git clone も引き続き使える**
 
 ```bash
-git clone https://github.com/Mikeore/Pocketdex.git
-cd Pocketdex
+git clone https://github.com/Mikeore/PocketDex.git
+cd PocketDex
 ```
 
 その後、Windows は `start.bat`、macOS / Linux は `./start.sh` を実行。
