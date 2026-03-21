@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.local
+*.log
+dist/
+.DS_Store
+Thumbs.db
+# Windows
+desktop.ini
+# Editor / AI agent internal files
+.claude/
+.superpowers/
+.tmp/
+AGENTS.md
+CLAUDE.md

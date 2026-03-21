@@ -1,0 +1,46 @@
+{
+  "id": "/?standalone=1",
+  "name": "PocketDex",
+  "short_name": "PocketDex",
+  "description": "Mobile remote control for Codex CLI — connect via QR code",
+  "start_url": "/?standalone=1",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "categories": ["productivity", "developer-tools"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open PocketDex",
+      "short_name": "Open",
+      "description": "Launch PocketDex remote session",
+      "url": "/?standalone=1",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/screenshot-mobile.jpg",
+      "sizes": "1255x2417",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "PocketDex chat interface"
+    }
+  ]
+}

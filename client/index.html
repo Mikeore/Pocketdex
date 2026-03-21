@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PocketDex" />
+  <meta name="theme-color" content="#0d1117" />
+  <meta name="referrer" content="no-referrer" />
+  <title>PocketDex</title>
+
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/account.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <!-- Apple touch icon -->
+  <link rel="apple-touch-icon" href="/icons/icon.svg" />
+</head>
+<body>
+<div id="app" role="main">
+  <!-- ══ CONNECTING SCREEN ══════════════════════════════════════════ -->
+  <div id="screen-connecting" class="screen" role="status" aria-live="polite">
+    <div class="connect-logo" aria-hidden="true">
+      <!-- Terminal icon -->
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <polyline points="4 17 10 11 4 5"></polyline>
+        <line x1="12" y1="19" x2="20" y2="19"></line>
+      </svg>
+    </div>
+    <p class="connect-title">PocketDex</p>
+    <p class="connect-subtitle"><span data-i18n="connecting">Connecting</span><span class="dots" aria-hidden="true"></span></p>
+    <div class="spinner" aria-label="Loading"></div>
+  </div>
+
+  <!-- ══ ERROR SCREEN ═══════════════════════════════════════════════ -->
+  <div id="screen-error" class="screen" hidden role="alert">
+    <div class="error-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    </div>
+    <p class="error-title" data-i18n="error_title">Connection Failed</p>
+    <p id="error-message" class="error-message" data-i18n="error_default">Could not connect to PocketDex server.</p>
+    <button class="btn btn-primary" onclick="window.location.reload()" data-i18n="retry">Retry</button>
+  </div>
+
+  <!-- ══ MAIN SCREEN ════════════════════════════════════════════════ -->
+  <div id="screen-main" class="screen" hidden aria-label="PocketDex chat">
+
+    <!-- PWA Install Banner (shown only when screen-main is visible) -->
+    <div id="install-banner" role="banner" aria-label="Install PocketDex">
+      <div class="install-banner-icon" aria-hidden="true">
+        <img src="/icons/icon.svg" alt="" />
+      </div>
+      <div class="install-banner-text">
+        <p class="install-banner-title" data-i18n="install_heading">Install PocketDex</p>
+        <p class="install-banner-sub" data-i18n="install_subtitle">Add to Home Screen for quick access</p>
+      </div>
+      <div class="install-banner-actions">
+        <button class="btn-install" id="install-btn" aria-label="Install app" data-i18n="install_btn">Install</button>
+        <button class="btn-install-dismiss" id="install-dismiss" aria-label="Dismiss" data-i18n="install_dismiss">Later</button>
+      </div>
+    </div>
+
+    <!-- iOS install hint (Safari doesn't support beforeinstallprompt) -->
+    <div id="ios-install-hint" role="status" aria-live="polite">
+      Tap <strong>Share</strong> then <strong>"Add to Home Screen"</strong> to install
+    </div>
+
+    <!-- Disconnected banner -->
+    <div id="disconnected-banner" role="alert" aria-live="assertive">
+      <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none"
+           stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+      </svg>
+      Disconnected — turn will resume when reconnected
+    </div>
+
+    <!-- Header -->
+    <header id="header" role="banner">
+      <!-- Turn progress bar — absolute positioned at top of header -->
+      <div id="turn-progress-bar" aria-hidden="true"><div id="turn-progress-fill"></div></div>
+
+      <div class="header-row">
+        <!-- History button (left) -->
+        <button id="history-btn" class="btn-icon" aria-label="Recent sessions" title="Recent sessions"
+                data-i18n-aria="history_aria" data-i18n-title="history_title">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.5 15A9 9 0 1 0 5.9 5.8L1 10"></path>
+            <polyline points="12 7 12 12 15 15"></polyline>
+          </svg>
+        </button>
+
+        <!-- Center: status pill + working directory -->
+        <div class="header-center">
+          <div class="status-pill" id="status-dot" role="status" aria-live="polite" data-state="connecting">
+            <span class="status-pill-dot" aria-hidden="true"></span>
+            <span class="status-pill-label"></span>
+          </div>
+          <p class="header-cwd" id="header-cwd" aria-label="Working directory"></p>
+        </div>
+
+        <!-- Right: approval badge + settings -->
+        <div class="header-actions">
+          <button id="approval-queue-btn" class="approval-queue-btn" hidden aria-label="Pending approvals">
+            <span id="approval-queue-count" class="approval-queue-count">0</span>
+          </button>
+
+          <button id="settings-btn" class="btn-icon" aria-label="Open settings" title="Settings"
+                  data-i18n-aria="settings_aria" data-i18n-title="settings_title">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-.4-1.1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2.8a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2.8a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 .4 1.1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.09a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.1.4 1.7 1.7 0 0 0-.6 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Usage summary band — visible when "Show Usage Summary" is enabled in Settings -->
+      <div id="header-insights" class="header-insights" hidden aria-live="polite">
+        <div id="rate-summary-bar" class="rate-summary-bar" hidden>
+          <p id="rate-summary-status" class="rate-summary-status"></p>
+          <span id="rate-summary-cards" class="rate-summary-cards"></span>
+        </div>
+      </div>
+
+      <!-- Turn stats badge (below row, visible during active turn) -->
+      <div id="turn-stats-badge" class="turn-stats-badge" hidden aria-live="polite"></div>
+    </header>
+
+    <section id="account-banner" class="account-banner" hidden aria-live="polite">
+      <button
+        id="account-banner-close"
+        class="account-banner-close"
+        type="button"
+        aria-label="Dismiss sign-in reminder"
+        title="Dismiss"
+        data-i18n-aria="banner_dismiss_aria"
+        data-i18n-title="generic_dismiss"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+        </svg>
+      </button>
+      <div class="account-banner-copy">
+        <p id="account-banner-title" class="account-banner-title">Sign in to Codex</p>
+        <p id="account-banner-text" class="account-banner-text">
+          Continue with ChatGPT on this phone to unlock Codex controls.
+        </p>
+      </div>
+      <div class="account-banner-actions">
+        <button id="account-login-btn" class="btn btn-primary" type="button">
+          Continue with ChatGPT
+        </button>
+      </div>
+    </section>
+
+    <!-- History drawer -->
+    <div id="history-overlay" class="history-overlay" hidden aria-hidden="true">
+      <div id="history-backdrop" class="history-backdrop"></div>
+      <section
+        class="history-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="history-drawer-title"
+      >
+        <header class="history-drawer-header">
+          <div>
+            <p class="history-drawer-kicker" data-i18n="history_kicker">Codex</p>
+            <h2 id="history-drawer-title" class="history-drawer-title" data-i18n="history_sessions">Sessions</h2>
+          </div>
+          <button id="history-close-btn" class="settings-close-btn" type="button" aria-label="Close history" data-i18n-aria="history_close_aria">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+            </svg>
+          </button>
+        </header>
+        <div id="history-tab-group" class="history-tab-group" role="tablist" aria-label="Session views" data-i18n-aria="history_tabs_aria">
+          <button id="history-tab-recent" class="history-tab-btn is-active" type="button" role="tab" aria-selected="true" data-tab="recent" data-i18n="history_tab_recent">Recent</button>
+          <button id="history-tab-search" class="history-tab-btn" type="button" role="tab" aria-selected="false" data-tab="search" data-i18n="history_tab_search">Search</button>
+          <button id="history-tab-new" class="history-tab-btn" type="button" role="tab" aria-selected="false" data-tab="new" data-i18n="history_tab_new">New</button>
+        </div>
+
+        <section id="history-panel-recent" class="history-panel" role="tabpanel">
+          <div class="history-drawer-toolbar">
+            <button id="history-refresh-btn" class="settings-link-btn" type="button" data-i18n="history_refresh">Refresh</button>
+            <div id="history-filter-group" class="history-filter-group" role="group" aria-label="History filters" data-i18n-aria="history_filters_aria">
+              <button class="history-filter-btn is-active" type="button" data-filter="all" data-i18n="history_filter_all" aria-pressed="true">All</button>
+              <button class="history-filter-btn" type="button" data-filter="current" data-i18n="history_filter_current" aria-pressed="false">Current</button>
+              <button class="history-filter-btn" type="button" data-filter="active" data-i18n="history_filter_active" aria-pressed="false">Active</button>
+              <button class="history-filter-btn" type="button" data-filter="stored" data-i18n="history_filter_stored" aria-pressed="false">Stored</button>
+            </div>
+          </div>
+          <p id="history-status" class="settings-hint">Your recent Codex threads.</p>
+          <div id="history-thread-list" class="settings-thread-list"></div>
+        </section>
+
+        <section id="history-panel-search" class="history-panel" role="tabpanel" hidden>
+          <div class="history-search-shell">
+            <label for="search-input" class="visually-hidden" data-i18n="search_aria">Search messages</label>
+            <input id="search-input" type="search" class="search-input history-search-input" placeholder="Search messages…" aria-label="Search messages"
+                   data-i18n-placeholder="search_placeholder" data-i18n-aria="search_aria" autocomplete="off" />
+            <div class="history-search-toolbar">
+              <span id="search-count" class="search-count"></span>
+              <button id="search-prev" class="search-nav-btn" type="button" aria-label="Previous match" data-i18n-aria="search_prev">↑</button>
+              <button id="search-next" class="search-nav-btn" type="button" aria-label="Next match" data-i18n-aria="search_next">↓</button>
+              <button id="search-close" class="search-close-btn" type="button" aria-label="Close search" data-i18n-aria="search_close">✕</button>
+            </div>
+          </div>
+          <p class="settings-hint settings-hint-compact" data-i18n="history_search_hint">Search inside the current chat without leaving the session hub.</p>
+        </section>
+
+        <section id="history-panel-new" class="history-panel" role="tabpanel" hidden>
+          <div class="history-new-stack">
+            <button id="history-new-current-btn" class="history-new-card" type="button">
+              <span class="history-new-card-copy">
+                <span class="history-new-card-title" data-i18n="history_new_here">New session here</span>
+                <span id="history-current-workspace-copy" class="history-new-card-hint" data-i18n="history_new_here_hint">Start a clean thread in the workspace you're already on.</span>
+              </span>
+            </button>
+
+            <div class="history-new-section">
+              <div class="history-new-section-head">
+                <p class="history-new-section-title" data-i18n="history_workspace_recent">Recent workspaces</p>
+                <p class="history-new-section-note" data-i18n="history_workspace_recent_hint">Pick one to start a fresh thread there.</p>
+              </div>
+              <div id="history-workspace-list" class="history-workspace-list"></div>
+            </div>
+
+            <div class="history-new-section">
+              <div class="history-new-section-head">
+                <p class="history-new-section-title">Parent folders</p>
+                <p class="history-new-section-note">Start a new session in a parent directory.</p>
+              </div>
+              <div id="history-parent-dirs" class="history-parent-dirs"></div>
+              <details class="history-path-details">
+                <summary class="history-path-details-summary">Type a path manually…</summary>
+                <label for="history-workspace-input" class="visually-hidden" data-i18n="history_workspace_input_label">Workspace path</label>
+                <input id="history-workspace-input" class="composer-sheet-input history-workspace-input" type="text" placeholder="C:\\project\\repo" data-i18n-placeholder="history_workspace_input_placeholder" autocomplete="off" spellcheck="false" />
+                <button id="history-workspace-start-btn" class="settings-link-btn history-workspace-start-btn" type="button" data-i18n="history_workspace_start">Start in this workspace</button>
+              </details>
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <div id="settings-overlay" class="settings-overlay" hidden aria-hidden="true">
+      <div id="settings-backdrop" class="settings-backdrop"></div>
+      <section
+        class="settings-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+      >
+        <header class="settings-sheet-header">
+          <div>
+            <p class="settings-eyebrow">PocketDex</p>
+            <h2 id="settings-title" class="settings-title" data-i18n="settings_title">Settings</h2>
+          </div>
+          <button id="settings-close-btn" class="settings-close-btn" type="button" aria-label="Close settings" data-i18n-aria="settings_close_aria">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+            </svg>
+          </button>
+        </header>
+
+        <section class="settings-section" aria-labelledby="settings-account-heading">
+          <div class="settings-section-head">
+            <div>
+              <p class="settings-section-kicker" data-i18n="settings_account">Account</p>
+              <h3 id="settings-account-heading" class="settings-section-title" data-i18n="settings_signin">Codex sign-in</h3>
+            </div>
+          </div>
+          <div class="settings-list">
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="settings_lbl_status">Status</span>
+              <span id="settings-account-status" class="settings-value">Checking…</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="settings_lbl_email">Email</span>
+              <span id="settings-account-email" class="settings-value">Not connected</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="settings_lbl_plan">Plan</span>
+              <span id="settings-account-plan" class="settings-value">Unknown</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="settings_lbl_conn">Connection</span>
+              <span id="settings-connection-status" class="settings-value">Connecting…</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="settings_lbl_model">Current Model</span>
+              <span id="settings-current-model" class="settings-value">Checking…</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="settings_lbl_ws">Workspace</span>
+              <span id="settings-cwd-value" class="settings-value">Waiting for Codex…</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-rate-heading">
+          <div class="settings-section-head">
+            <div>
+              <p class="settings-section-kicker" data-i18n="settings_usage">Usage</p>
+              <h3 id="settings-rate-heading" class="settings-section-title" data-i18n="settings_rate_limits">Rate limits</h3>
+            </div>
+            <button id="settings-rate-refresh" class="settings-link-btn" type="button" data-i18n="settings_refresh">Refresh</button>
+          </div>
+          <p id="settings-rate-status" class="settings-hint" data-i18n="settings_usage_hint">Open this menu while signed in to load usage.</p>
+          <div id="settings-rate-limits" class="settings-rate-limits"></div>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-preferences-heading">
+          <div class="settings-section-head">
+            <div>
+              <p class="settings-section-kicker" data-i18n="settings_prefs">Preferences</p>
+              <h3 id="settings-preferences-heading" class="settings-section-title" data-i18n="settings_input_layout">Input & layout</h3>
+            </div>
+          </div>
+          <label class="settings-toggle" for="settings-voice-toggle">
+            <span class="settings-toggle-copy">
+              <span class="settings-toggle-title" data-i18n="settings_voice_label">Show Voice Input</span>
+              <span id="settings-voice-status" class="settings-toggle-note" data-i18n="settings_voice_checking">Checking microphone support…</span>
+            </span>
+            <span class="settings-switch">
+              <input id="settings-voice-toggle" name="voice_input_visible" type="checkbox" />
+              <span class="settings-switch-ui" aria-hidden="true"></span>
+            </span>
+          </label>
+          <p id="settings-voice-hint" class="settings-hint settings-hint-compact" data-i18n="settings_voice_hint">
+            Turn the microphone shortcut on or off without changing the rest of the composer.
+          </p>
+          <label class="settings-toggle" for="settings-enter-toggle">
+            <span class="settings-toggle-copy">
+              <span class="settings-toggle-title" data-i18n="settings_send_on_enter">Send on Enter</span>
+              <span class="settings-toggle-note" data-i18n="settings_send_on_enter_hint">Shift+Enter for newline. Off = Ctrl+Enter to send.</span>
+            </span>
+            <span class="settings-switch">
+              <input id="settings-enter-toggle" name="send_on_enter" type="checkbox" />
+              <span class="settings-switch-ui" aria-hidden="true"></span>
+            </span>
+          </label>
+          <label class="settings-toggle" for="settings-compact-commands-toggle">
+            <span class="settings-toggle-copy">
+              <span class="settings-toggle-title" data-i18n="settings_compact_commands_label">Compact Command Cards</span>
+              <span class="settings-toggle-note" data-i18n="settings_compact_commands_hint">Shorten command cards until you expand them.</span>
+            </span>
+            <span class="settings-switch">
+              <input id="settings-compact-commands-toggle" name="compact_commands" type="checkbox" />
+              <span class="settings-switch-ui" aria-hidden="true"></span>
+            </span>
+          </label>
+          <label class="settings-toggle" for="settings-rate-summary-toggle">
+            <span class="settings-toggle-copy">
+              <span class="settings-toggle-title" data-i18n="settings_usage_summary_label">Show Usage Summary</span>
+              <span id="settings-rate-summary-note" class="settings-toggle-note" data-i18n="settings_usage_summary_hint">Keep rate limits visible in the main screen header area.</span>
+            </span>
+            <span class="settings-switch">
+              <input id="settings-rate-summary-toggle" name="usage_summary_visible" type="checkbox" />
+              <span class="settings-switch-ui" aria-hidden="true"></span>
+            </span>
+          </label>
+          <div class="settings-field">
+            <label class="settings-field-label" for="settings-theme-select" data-i18n="settings_theme">Theme</label>
+            <select id="settings-theme-select" name="theme_mode" class="settings-field-select" aria-label="Theme" data-i18n-aria="settings_theme">
+              <option value="auto" data-i18n="settings_theme_auto">Auto</option>
+              <option value="dark" data-i18n="settings_theme_dark">Dark</option>
+              <option value="light" data-i18n="settings_theme_light">Light</option>
+            </select>
+          </div>
+          <div class="settings-field">
+            <label class="settings-field-label" for="settings-language-select" data-i18n="settings_language">Language</label>
+            <select id="settings-language-select" name="language" class="settings-field-select" aria-label="Language" data-i18n-aria="settings_language">
+              <option value="en">English</option>
+              <option value="zh-Hans">简体中文</option>
+              <option value="zh-Hant">繁體中文</option>
+              <option value="ja">日本語</option>
+            </select>
+          </div>
+          <p id="settings-theme-status" class="settings-hint settings-hint-compact">
+            Follow your device appearance, or lock PocketDex to one theme.
+          </p>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-app-heading">
+          <div class="settings-section-head">
+            <div>
+              <p class="settings-section-kicker" data-i18n="settings_install_section">Installation</p>
+              <h3 id="settings-app-heading" class="settings-section-title" data-i18n="settings_install_app">Install PocketDex</h3>
+            </div>
+          </div>
+          <div class="settings-list">
+            <div class="settings-row">
+              <span class="settings-label" data-i18n="generic_status">Status</span>
+              <span id="settings-install-status" class="settings-value">Checking…</span>
+            </div>
+          </div>
+          <p id="settings-install-hint" class="settings-hint">
+            Add PocketDex to your home screen for faster access.
+          </p>
+          <div class="settings-action-row">
+            <button id="settings-install-action" class="settings-link-btn" type="button">Install</button>
+            <button id="settings-qr-refresh-btn" class="settings-link-btn" type="button" data-i18n="settings_qr_refresh">Refresh QR Code</button>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <!-- Search bar (hidden by default) -->
+    <!-- Messages -->
+    <section id="messages" aria-label="Conversation" aria-live="polite">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-state-icon" aria-hidden="true">
+          <svg width="48" height="48" viewBox="0 0 24 24"
+               stroke="#484f58" fill="none" stroke-width="1.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <p class="empty-state-text" data-i18n="empty_main">Send a message to start a Codex session</p>
+        <p class="empty-state-hint" data-i18n="empty_hint">Type below or press Enter to send</p>
+      </div>
+    </section>
+
+    <!-- Scroll to bottom button -->
+    <button id="scroll-bottom-btn" class="scroll-bottom-btn" hidden aria-label="Scroll to bottom" data-i18n-aria="scroll_bottom_aria">↓</button>
+
+    <!-- Slash command menu -->
+    <div id="slash-menu" class="slash-menu" hidden></div>
+
+    <!-- Image preview area -->
+    <div id="image-preview-area" class="image-preview-area" hidden></div>
+
+    <div id="chat-status-stack" class="chat-status-stack" hidden>
+      <button id="active-turn-chip" class="active-turn-chip" type="button" hidden>
+        <span class="active-turn-chip-dot" aria-hidden="true"></span>
+        <span class="active-turn-chip-copy">
+          <span class="active-turn-chip-title" data-i18n="active_turn_chip">Working on this turn</span>
+          <span id="active-turn-chip-hint" class="active-turn-chip-hint" data-i18n="active_turn_chip_hint">Send a message to steer it live.</span>
+        </span>
+      </button>
+    </div>
+
+    <!-- Input bar -->
+    <div id="input-bar" role="form" aria-label="Send message">
+      <div class="composer-topline">
+        <label for="model-picker" class="visually-hidden" data-i18n="generic_model">Model</label>
+        <select id="model-picker" name="model" aria-label="Model" title="Model" data-i18n-aria="generic_model" data-i18n-title="generic_model">
+          <option value="" data-i18n="generic_model_placeholder">Model…</option>
+        </select>
+      </div>
+      <div class="input-bar-main">
+      <input id="image-input" type="file" accept="image/*" style="display:none" aria-hidden="true" />
+      <input id="file-input" type="file" style="display:none" aria-hidden="true" />
+      <button id="attach-btn" class="btn-icon btn-attach" aria-label="Attach image" title="Attach image"
+              data-i18n-aria="attach_aria" data-i18n-title="attach_title">
+        <svg viewBox="0 0 24 24" aria-hidden="true" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <div id="composer-tools-menu" class="composer-tools-menu" hidden aria-hidden="true">
+        <div class="composer-tools-actions composer-tools-actions-stack">
+          <button id="composer-open-attach-btn" class="composer-tool-action" type="button" data-i18n="composer_attach_entry">Attach</button>
+          <button id="composer-open-command-btn" class="composer-tool-action" type="button" data-i18n="composer_command_entry">Command</button>
+        </div>
+        <div class="composer-tools-section">
+          <p class="composer-tools-label" data-i18n="composer_mode_label">Mode</p>
+          <div id="composer-mode-group" class="composer-segmented" role="group" aria-label="Mode" data-i18n-aria="composer_mode_label">
+            <button class="composer-segment-btn" type="button" data-mode="default" data-i18n="composer_mode_default">Default</button>
+            <button class="composer-segment-btn" type="button" data-mode="plan" data-i18n="composer_mode_plan">Plan</button>
+          </div>
+        </div>
+        <div class="composer-tools-section">
+          <p class="composer-tools-label" data-i18n="composer_speed_label">Speed</p>
+          <div id="composer-speed-group" class="composer-segmented composer-segmented-three" role="group" aria-label="Speed" data-i18n-aria="composer_speed_label">
+            <button class="composer-segment-btn" type="button" data-speed="auto" data-i18n="composer_speed_auto">Auto</button>
+            <button class="composer-segment-btn" type="button" data-speed="fast" data-i18n="composer_speed_fast">Fast</button>
+            <button class="composer-segment-btn" type="button" data-speed="flex" data-i18n="composer_speed_flex">Flex</button>
+          </div>
+        </div>
+      </div>
+      <label for="user-input" class="visually-hidden" data-i18n="generic_message">Message</label>
+      <textarea
+        id="user-input"
+        name="message"
+        rows="1"
+        placeholder="Message Codex…"
+        data-i18n-placeholder="msg_placeholder"
+        aria-label="Type your message"
+        data-i18n-aria="msg_aria"
+        autocomplete="off"
+        autocorrect="on"
+        spellcheck="true"
+      ></textarea>
+
+      <button id="voice-btn" class="btn-icon btn-voice" aria-label="Voice Input" title="Voice Input"
+              data-i18n-aria="voice_aria" data-i18n-title="voice_title">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+      </button>
+
+      <button id="send-btn" aria-label="Send message" disabled data-i18n-aria="send_aria">
+        <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <line x1="12" y1="19" x2="12" y2="5"></line>
+          <polyline points="5 12 12 5 19 12"></polyline>
+        </svg>
+        <svg class="stop-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="6" y="6" width="12" height="12" rx="1" stroke-width="2"
+                stroke="currentColor" fill="none"></rect>
+        </svg>
+      </button>
+      </div>
+    </div>
+
+    <div id="attach-sheet-overlay" class="composer-sheet-overlay" hidden aria-hidden="true">
+      <div id="attach-sheet-backdrop" class="composer-sheet-backdrop"></div>
+      <section class="composer-sheet" role="dialog" aria-modal="true" aria-labelledby="attach-sheet-title">
+        <header class="composer-sheet-header">
+          <div>
+            <p class="composer-sheet-kicker">PocketDex</p>
+            <h2 id="attach-sheet-title" class="composer-sheet-title" data-i18n="composer_attach_sheet_title">Attach</h2>
+          </div>
+          <button id="attach-sheet-close-btn" class="composer-sheet-close-btn" type="button" aria-label="Close attach menu" data-i18n-aria="attach_close_aria">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+            </svg>
+          </button>
+        </header>
+        <div class="composer-sheet-action-list">
+          <button id="attach-device-btn" class="composer-sheet-action" type="button">
+            <span class="composer-sheet-action-title" data-i18n="composer_attach_device">From this device</span>
+            <span class="composer-sheet-action-hint" data-i18n="composer_attach_device_hint">Photos and text files work best here.</span>
+          </button>
+          <button id="attach-workspace-btn" class="composer-sheet-action" type="button">
+            <span class="composer-sheet-action-title" data-i18n="composer_attach_workspace">From workspace</span>
+            <span class="composer-sheet-action-hint" data-i18n="composer_attach_workspace_hint">Search the current project and attach a file reference.</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div id="workspace-sheet-overlay" class="composer-sheet-overlay" hidden aria-hidden="true">
+      <div id="workspace-sheet-backdrop" class="composer-sheet-backdrop"></div>
+      <section class="composer-sheet composer-sheet-search" role="dialog" aria-modal="true" aria-labelledby="workspace-sheet-title">
+        <header class="composer-sheet-header">
+          <div>
+            <p class="composer-sheet-kicker">PocketDex</p>
+            <h2 id="workspace-sheet-title" class="composer-sheet-title" data-i18n="composer_workspace_title">Workspace files</h2>
+          </div>
+          <button id="workspace-sheet-close-btn" class="composer-sheet-close-btn" type="button" aria-label="Close workspace search" data-i18n-aria="workspace_close_aria">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+            </svg>
+          </button>
+        </header>
+        <label for="workspace-search-input" class="visually-hidden" data-i18n="composer_workspace_search_label">Search files</label>
+        <input id="workspace-search-input" class="composer-sheet-input" type="search" placeholder="Search files…" data-i18n-placeholder="composer_workspace_search_placeholder" autocomplete="off" spellcheck="false" />
+        <p id="workspace-search-status" class="composer-sheet-status" data-i18n="composer_workspace_idle">Type a file name to search this workspace.</p>
+        <div id="workspace-search-results" class="workspace-search-results"></div>
+      </section>
+    </div>
+
+    <div id="command-sheet-overlay" class="composer-sheet-overlay" hidden aria-hidden="true">
+      <div id="command-sheet-backdrop" class="composer-sheet-backdrop"></div>
+      <section class="composer-sheet composer-sheet-command" role="dialog" aria-modal="true" aria-labelledby="command-sheet-title">
+        <header class="composer-sheet-header">
+          <div>
+            <p class="composer-sheet-kicker">PocketDex</p>
+            <h2 id="command-sheet-title" class="composer-sheet-title" data-i18n="composer_command_title">Run command</h2>
+          </div>
+          <button id="command-sheet-close-btn" class="composer-sheet-close-btn" type="button" aria-label="Close command runner" data-i18n-aria="command_close_aria">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+            </svg>
+          </button>
+        </header>
+        <p id="command-sheet-cwd" class="composer-sheet-hint"></p>
+        <label for="command-sheet-input" class="visually-hidden" data-i18n="composer_command_input_label">Command</label>
+        <textarea id="command-sheet-input" class="composer-sheet-input composer-sheet-textarea" rows="2" placeholder="Type a shell command…" data-i18n-placeholder="composer_command_placeholder" autocomplete="off" spellcheck="false"></textarea>
+        <div class="composer-sheet-toolbar">
+          <button id="command-run-btn" class="settings-link-btn" type="button" data-i18n="composer_command_run">Run</button>
+          <button id="command-stop-btn" class="settings-link-btn" type="button" data-i18n="composer_command_stop">Stop</button>
+          <button id="command-clear-btn" class="settings-link-btn" type="button" data-i18n="composer_command_clear">Clear</button>
+        </div>
+        <p id="command-sheet-status" class="composer-sheet-status" data-i18n="composer_command_idle">Ready to run a workspace command.</p>
+        <pre id="command-sheet-output" class="command-sheet-output" aria-live="polite"></pre>
+      </section>
+    </div>
+  </div>
+
+  <!-- ══ APPROVAL QUEUE DRAWER ════════════════════════════════════ -->
+  <div id="approval-queue-drawer" class="approval-queue-drawer" hidden aria-hidden="true">
+    <div class="approval-queue-backdrop" id="approval-queue-backdrop"></div>
+    <div class="approval-queue-sheet">
+      <header class="approval-queue-header">
+        <h2 class="approval-queue-title">Pending Approvals</h2>
+        <button id="approval-queue-close" class="approval-queue-close-btn" aria-label="Close">✕</button>
+      </header>
+      <div id="approval-queue-list" class="approval-queue-list"></div>
+    </div>
+  </div>
+
+  <!-- ══ APPROVAL OVERLAY ═══════════════════════════════════════════ -->
+  <div id="approval-overlay" role="dialog" aria-modal="true"
+       aria-labelledby="approval-title" aria-hidden="true">
+    <div class="approval-scrim" id="approval-scrim"></div>
+    <div class="approval-sheet">
+      <!-- Drag handle — must be first child, do NOT add pointer-events:none -->
+      <div class="approval-handle" aria-hidden="true">
+        <span class="approval-handle-bar"></span>
+      </div>
+
+      <!-- Badge: "Command" or "File Change" -->
+      <span id="approval-badge" class="approval-badge cmd" data-i18n="approval_cmd_badge">Command</span>
+
+      <!-- Title -->
+      <p id="approval-title" class="approval-title" data-i18n="approval_cmd_title">Codex wants to run a command</p>
+
+      <!-- Detail area -->
+      <div>
+        <p id="approval-detail-label" class="approval-detail-label">Command</p>
+        <div id="approval-detail" class="approval-detail" aria-label="Command details">
+          —
+        </div>
+      </div>
+
+      <!-- Timer bar -->
+      <div id="approval-timer-bar" class="approval-timer-bar">
+        <div id="approval-timer-fill" class="approval-timer-fill"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="approval-actions" id="approval-actions">
+        <button class="btn btn-deny"  id="approval-deny"        aria-label="Deny" data-i18n="approval_deny" data-i18n-aria="approval_deny">Deny</button>
+        <button class="btn btn-approve" id="approval-approve"   aria-label="Approve" data-i18n="approval_approve" data-i18n-aria="approval_approve">Approve</button>
+        <button class="btn btn-approve-all" id="approval-approve-all"
+                aria-label="Approve all" data-i18n="approval_always">Always</button>
+      </div>
+    </div>
+  </div>
+  <!-- ══ CONTEXT MENU ═════════════════════════════════════════════════ -->
+  <div id="ctx-menu" class="ctx-menu" hidden role="menu"></div>
+  <!-- ══ TOAST ══════════════════════════════════════════════════════ -->
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+</div><!-- #app -->
+
+<!-- marked.js for Markdown rendering -->
+<script defer src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<!-- DOMPurify for XSS sanitization -->
+<script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+<!-- Prism.js for syntax highlighting -->
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<!-- Socket.IO client (served by our own server) -->
+<script defer src="/socket.io/socket.io.js"></script>
+<!-- Shared approval compatibility helpers -->
+<script defer src="/shared/approval-protocol.js"></script>
+<!-- i18n — must load before app.js -->
+<script defer src="/i18n.js"></script>
+<!-- Main app logic -->
+<script defer src="/app.js"></script>
+<!-- Service Worker -->
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function(e) {
+      console.warn('[sw] registration failed:', e);
+    });
+  }
+</script>
+</body>
+</html>

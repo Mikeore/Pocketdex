@@ -1,0 +1,55 @@
+{
+  "name": "pocketdex",
+  "version": "0.1.0",
+  "description": "Mobile remote control for Codex CLI \u2014 connect from any smartphone via QR code",
+  "main": "src/index.js",
+  "bin": {
+    "pocketdex": "src/index.js"
+  },
+  "scripts": {
+    "start": "node scripts/bootstrap.js",
+    "dev": "nodemon src/index.js",
+    "test": "node --test",
+    "bootstrap": "node scripts/bootstrap.js",
+    "start:app": "node src/index.js",
+    "release:zip": "node scripts/build-release.js --mode=release",
+    "repo:zip": "node scripts/build-release.js --mode=repo"
+  },
+  "keywords": [
+    "codex",
+    "openai",
+    "codex-cli",
+    "remote-control",
+    "mobile",
+    "pwa",
+    "qr-code",
+    "cli",
+    "smartphone",
+    "progressive-web-app"
+  ],
+  "homepage": "https://github.com/Mikeore/Pocketdex#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mikeore/Pocketdex.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Mikeore/Pocketdex/issues"
+  },
+  "author": "Mikeore",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@openai/codex": "0.116.0",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.5",
+    "web-push": "^3.6.7",
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
