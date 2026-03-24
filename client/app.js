@@ -284,6 +284,8 @@
   let _turnToolGroups = [];
   let _turnToolGroup = null;
   let _turnToolGroupCount = 0;
+  let _inlineStatusEl = null;
+  let _inlineStatusItemId = null;
 
   const SESSION_TOKEN_KEY = 'pocketdex.sessionToken';
   const VOICE_INPUT_ENABLED_KEY = 'pocketdex.voiceInputEnabled';
@@ -1768,6 +1770,7 @@
     if (emptyState) emptyState.remove();
     const stickToBottom = isAtBottom();
     sealTurnToolGroup();
+    clearInlineStatus();
 
     thinkingText = '';
     thinkingEl = document.createElement('div');
@@ -1920,6 +1923,34 @@
       '</div>' +
       '<div class="activity-card-details">' + summaryHtml + filesHtml + stepsHtml + '</div>' +
       '<div class="activity-card-full">' + fullHtml + '</div>';
+  }
+
+  // ── Inline status indicator (Codex-style) ────────────────────
+  function showInlineStatus(itemId, text, isDone) {
+    if (!messagesEl) return;
+    if (!_inlineStatusEl || _inlineStatusItemId !== itemId) {
+      _inlineStatusEl = document.createElement('div');
+      _inlineStatusEl.className = 'inline-status';
+      messagesEl.appendChild(_inlineStatusEl);
+      _inlineStatusItemId = itemId;
+    }
+    _inlineStatusEl.className = 'inline-status' + (isDone ? ' is-done' : ' is-running');
+    _inlineStatusEl.innerHTML =
+      '<span class="inline-status-icon">' +
+        (isDone
+          ? svgIcon('check', 12)
+          : '<span class="inline-status-spinner" aria-hidden="true"></span>') +
+      '</span>' +
+      '<span class="inline-status-text">' + escapeHtml(text) + '</span>';
+    if (isAtBottom()) scrollToBottom();
+  }
+
+  function clearInlineStatus() {
+    if (_inlineStatusEl) {
+      _inlineStatusEl.remove();
+      _inlineStatusEl = null;
+      _inlineStatusItemId = null;
+    }
   }
 
   function ensureActivityCard(itemId, payload) {
@@ -2076,6 +2107,9 @@
     if (isThreadItemShape(params && params.item)) return params.item;
     if (isThreadItemShape(params && params.responseItem)) return params.responseItem;
     if (isThreadItemShape(params && params.threadItem)) return params.threadItem;
+    // Broader compat: data.item wrapper, or top-level params with id+type
+    if (isThreadItemShape(params && params.data && params.data.item)) return params.data.item;
+    if (isThreadItemShape(params && params.data)) return params.data;
     if (isThreadItemShape(params)) return params;
     return null;
   }
@@ -2412,7 +2446,7 @@
       if (aiMessage && !hasAiText) aiMessage.remove();
     }
     currentAiModelEl = null;
-    currentTurnModelLabel = '';
+    if (!turnActive) currentTurnModelLabel = '';
     if (currentThinking && !hasThinking) currentThinking.remove();
     if (thinkingEl) {
       thinkingEl.classList.replace('is-live', 'is-done');
@@ -4469,6 +4503,11 @@
     const method = msg.method;
     const params = msg.params || {};
 
+    // Debug: log item/* and turn/* notifications to help diagnose activity card display issues
+    if (typeof method === 'string' && (method.startsWith('item/') || method.startsWith('turn/'))) {
+      console.debug('[PocketDex]', method, JSON.stringify(params).slice(0, 400));
+    }
+
     switch (method) {
       case 'thread/started':
         threadId = (params.thread && params.thread.id) || params.threadId || null;
@@ -4498,6 +4537,7 @@
         currentTurnId = '';
         currentThreadTurnCount += 1;
         finalizeTurnToolGroups(true);
+        clearInlineStatus();
         var turnAiEl = currentAiEl;
         setTurnActive(false);
         // Try to get token count from completion params
@@ -4567,12 +4607,15 @@
           ensureActivityCard(startedItem.id, commandActivityPayload(startedItem, '', 'running'));
           turnStats.toolCount += 1;
           updateTurnStatsBadge();
+          const cmdLabel = compactCommandLabel(startedItem) || t('activity_command_pending');
+          showInlineStatus(startedItem.id, t('activity_kicker_command') + ': ' + cmdLabel, false);
           handled = true;
         }
         if (startedItem && startedItem.type === 'fileChange') {
           _activityItems.set(startedItem.id, startedItem);
           _activityOutputs.set(startedItem.id, '');
           ensureActivityCard(startedItem.id, fileChangeActivityPayload(startedItem, '', 'running'));
+          showInlineStatus(startedItem.id, t('activity_kicker_files') + '...', false);
           handled = true;
         }
         if (startedItem && startedItem.type === 'mcpToolCall') {
@@ -4580,6 +4623,8 @@
           ensureActivityCard(startedItem.id, mcpCallActivityPayload(startedItem, 'running'));
           turnStats.toolCount += 1;
           updateTurnStatsBadge();
+          const mcpName = (startedItem.toolName || startedItem.name || t('activity_mcp_pending'));
+          showInlineStatus(startedItem.id, t('activity_kicker_mcp') + ': ' + mcpName, false);
           handled = true;
         }
         if (startedItem && startedItem.type === 'dynamicToolCall') {
@@ -4587,12 +4632,15 @@
           ensureActivityCard(startedItem.id, dynamicToolActivityPayload(startedItem, 'running'));
           turnStats.toolCount += 1;
           updateTurnStatsBadge();
+          const dynName = (startedItem.toolName || startedItem.name || t('activity_tool_pending'));
+          showInlineStatus(startedItem.id, t('activity_kicker_tool') + ': ' + dynName, false);
           handled = true;
         }
         if (startedItem && !handled && startedItem.id) {
           _activityItems.set(startedItem.id, startedItem);
           _activityOutputs.set(startedItem.id, '');
           ensureActivityCard(startedItem.id, genericItemActivityPayload(startedItem, '', 'running'));
+          showInlineStatus(startedItem.id, t('activity_kicker_operation') + '...', false);
         }
         break;
       }
@@ -4605,6 +4653,10 @@
           _activityItems.set(completedItem.id, completedItem);
           const preview = _activityOutputs.get(completedItem.id) || completedItem.aggregatedOutput || '';
           ensureActivityCard(completedItem.id, commandActivityPayload(completedItem, preview));
+          const exitOk = completedItem.exitCode == null || completedItem.exitCode === 0;
+          showInlineStatus(completedItem.id,
+            t('activity_kicker_command') + ' ' + (exitOk ? t('activity_status_done') : t('activity_status_error')),
+            true);
           handled = true;
         }
         if (completedItem && completedItem.type === 'fileChange') {
@@ -4613,22 +4665,26 @@
           turnStats.fileCount += Array.isArray(completedItem.changes) ? completedItem.changes.length : 0;
           updateTurnStatsBadge();
           ensureActivityCard(completedItem.id, fileChangeActivityPayload(completedItem, diffs, 'success'));
+          showInlineStatus(completedItem.id, t('activity_kicker_files') + ' ' + t('activity_status_done'), true);
           handled = true;
         }
         if (completedItem && completedItem.type === 'mcpToolCall') {
           _activityItems.set(completedItem.id, completedItem);
           ensureActivityCard(completedItem.id, mcpCallActivityPayload(completedItem));
+          showInlineStatus(completedItem.id, t('activity_kicker_mcp') + ' ' + t('activity_status_done'), true);
           handled = true;
         }
         if (completedItem && completedItem.type === 'dynamicToolCall') {
           _activityItems.set(completedItem.id, completedItem);
           ensureActivityCard(completedItem.id, dynamicToolActivityPayload(completedItem));
+          showInlineStatus(completedItem.id, t('activity_kicker_tool') + ' ' + t('activity_status_done'), true);
           handled = true;
         }
         if (completedItem && !handled && completedItem.id) {
           _activityItems.set(completedItem.id, completedItem);
           const preview = _activityOutputs.get(completedItem.id) || '';
           ensureActivityCard(completedItem.id, genericItemActivityPayload(completedItem, preview));
+          showInlineStatus(completedItem.id, t('activity_kicker_operation') + ' ' + t('activity_status_done'), true);
         }
         break;
       }
