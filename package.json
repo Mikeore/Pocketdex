@@ -1,6 +1,6 @@
 {
   "name": "pocketdex",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Mobile remote control for Codex CLI \u2014 connect from any smartphone via QR code",
   "main": "src/index.js",
   "bin": {
